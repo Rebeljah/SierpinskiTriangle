@@ -1,12 +1,19 @@
 from PIL import Image, ImageDraw
 from copy import deepcopy
+import random
+from collections import defaultdict
 
 from triangle import EquilateralTriangle
 
-MAX_DEPTH = 7
-BG_COLOR = 'black'
-OUTER_COLOR = 'white'
-INNER_COLOR = 'black'
+
+depth_to_color = defaultdict(
+    lambda: tuple(random.randint(0, 255) for _ in range(3))
+)
+
+
+def _get_color_at_depth(depth) -> tuple:
+    rgb = depth_to_color[depth]
+    return rgb
 
 
 def _recursive_draw_inner(tri, draw, max_depth, depth=0):
@@ -26,19 +33,17 @@ def _recursive_draw_inner(tri, draw, max_depth, depth=0):
     tri.scale(0.5)
 
     # moved scaled triangle to each point to draw sub-triangles
+    # DEBUG
     for point in sub_points:
         tri.reposition(point)
-        draw.polygon(tri.points, INNER_COLOR)
+        draw.polygon(tri.points, _get_color_at_depth(depth))
         # recursive step draws sub-triangles for this sub-triangle
         _recursive_draw_inner(deepcopy(tri), draw, max_depth, depth + 1)
 
 
 def render_sierpinski(
         width,
-        bg_color=None,
-        outer_color=None,
-        inner_color=None,
-        max_depth=4
+        to_depth
         ) -> Image:
     """Render a Sierpinski triangle with the specified color and depth.
     Returns PIL.Image object"""
@@ -46,26 +51,26 @@ def render_sierpinski(
 
     # creating PIL image
     w, h = int(tri.width), int(tri.height)
-    image = Image.new('RGB', (w, h), bg_color or BG_COLOR)
+    image = Image.new('RGB', (w, h),  _get_color_at_depth(-3))
     draw = ImageDraw.Draw(image, 'RGB')
 
     # draw outer triangle
-    draw.polygon(tri.points, fill=outer_color or OUTER_COLOR)
+    draw.polygon(tri.points, fill=_get_color_at_depth(-2))
 
     # draw first inner triangle
     tri.scale(0.5)
     tri.flip()
     tri.reposition((w/2, h))
-    draw.polygon(tri.points, fill=inner_color or INNER_COLOR)
+    draw.polygon(tri.points, fill=_get_color_at_depth(-1))
 
     # draw interior triangles until the maximum depth is reached on each branch
-    _recursive_draw_inner(tri, draw, max_depth)
+    _recursive_draw_inner(tri, draw, to_depth)
 
     return image
 
 
 if __name__ == '__main__':
     def main():
-        im = render_sierpinski(7 * 10**3, max_depth=8)
+        im = render_sierpinski(9 * 10 ** 3, to_depth=8)
         im.show()
     main()
